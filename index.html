@@ -61,14 +61,14 @@
 <body>
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark p-2">
-        <div class="container-fluid"><a class="navbar-brand" href="#">LM393 Universal Simulator</a></div>
+        <div class="container-fluid"><a class="navbar-brand" href="#">LM393 Calculator</a></div>
     </nav>
 
     <div id="app-container">
 
       <!-- Sidebar for Controls and Simulation -->
       <div id="sidebar">
-          <h6>Input</h6>
+          <h6>1. Input Mode</h6>
           <ul class="nav nav-pills nav-fill" id="configTabs" role="tablist">
               <li class="nav-item" role="presentation"><button class="nav-link active" id="resistance-tab" data-bs-toggle="tab" type="button">Resistance</button></li>
               <li class="nav-item" role="presentation"><button class="nav-link" id="voltage-tab" data-bs-toggle="tab" type="button">Voltage</button></li>
@@ -86,8 +86,8 @@
               </div>
           </div>
           <hr class="my-2">
-          <h6>Threshold</h6>
-          <div class="form-check form-switch m-2">
+          <h6>2. Threshold Requirements</h6>
+          <div class="form-check form-switch mb-2">
               <input class="form-check-input" type="checkbox" role="switch" id="enable_hysteresis" checked>
               <label class="form-check-label" for="enable_hysteresis">Enable Hysteresis</label>
           </div>
@@ -239,7 +239,7 @@
                     const R_EQ_HIGH = (VCC * R_LOW_TRIP - VREF * R_LOW_TRIP) / VREF;
                     const Rf_for_low = (R_EQ_HIGH * R_FIXED) / (R_FIXED - R_EQ_HIGH);
                     results.Rf = findClosestE96((Rf_for_high + Rf_for_low) / 2);
-                    results.R1 = 10000; // In this mode, Rt/Rb are a fixed 1:1 divider
+                    results.R1 = 10000;
                 } else {
                     let v_ut_target, v_lt_target;
                     if (currentMode === 'voltage') {
@@ -278,6 +278,21 @@
                     v_ut = v_lt = VCC * R2_standard / (results.R1 + R2_standard);
                 }
             }
+
+            // --- DYNAMIC SLIDER UPDATE (THE FIX) ---
+            if (currentMode === 'current') {
+                let upper_threshold_mA = parseFloat(isHysteresisEnabled ? document.getElementById('c_high_trip').value : document.getElementById('c_trip').value);
+                if (isNaN(upper_threshold_mA) || upper_threshold_mA <= 0) {
+                    upper_threshold_mA = 25; // Sensible default if input is invalid
+                }
+                const new_max = Math.ceil(upper_threshold_mA * 1.5);
+                simSlider.max = new_max > 30 ? new_max : 30; // Ensure a minimum range of 30mA
+
+                if (simSlider.max > 1000) simSlider.step = 10;
+                else if (simSlider.max > 100) simSlider.step = 1;
+                else simSlider.step = 0.1;
+            }
+
             updateUI(results);
         }
 
@@ -318,7 +333,7 @@
             }
 
             document.getElementById('v_sim_text').textContent = `V_Sense: ${v_sense.toFixed(3)} V`;
-            document.getElementById('slider_native_value').textContent = native_text; // <-- FIX IS HERE
+            document.getElementById('slider_native_value').textContent = native_text;
 
             if (hysteresisToggle.checked) {
                 if (isOutputActive && v_sense < v_lt) isOutputActive = false;
@@ -409,7 +424,7 @@
                 simSlider.min = 0; simSlider.max = VCC; simSlider.step = 0.01; simSlider.value = VCC / 2;
             } else {
                 sliderLabel.textContent = 'Sensor Current';
-                simSlider.min = 0; simSlider.max = 30; simSlider.step = 0.1; simSlider.value = 12;
+                // Range for current slider is now set dynamically in calculate()
             }
             calculate();
         }
